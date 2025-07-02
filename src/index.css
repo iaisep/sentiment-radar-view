@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,33 +7,33 @@
 
 @layer base {
   :root {
-    /* Base colors */
-    --background: 240 5% 6%;
-    --foreground: 210 40% 98%;
+    /* Base colors - Updated to light theme */
+    --background: 0 0% 98%;
+    --foreground: 240 10% 15%;
 
-    --card: 240 4% 9%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 15%;
 
-    --popover: 240 4% 9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 15%;
 
     --primary: 217 91% 60%;
-    --primary-foreground: 240 5% 6%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 240 4% 16%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 240 4% 96%;
+    --secondary-foreground: 240 10% 15%;
 
-    --muted: 240 4% 16%;
-    --muted-foreground: 240 5% 65%;
+    --muted: 240 4% 96%;
+    --muted-foreground: 240 5% 45%;
 
-    --accent: 240 4% 16%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 240 4% 96%;
+    --accent-foreground: 240 10% 15%;
 
     --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 240 4% 16%;
-    --input: 240 4% 16%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
     --ring: 217 91% 60%;
 
     --radius: 0.75rem;
@@ -47,29 +48,22 @@
     --sentiment-negative: 0 84% 60%;
     --sentiment-negative-light: 0 84% 73%;
 
-    /* Gradients */
-    --gradient-dashboard: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(240 4% 8%) 100%);
-    --gradient-card: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(240 4% 11%) 100%);
+    /* Gradients - Updated for light theme */
+    --gradient-dashboard: linear-gradient(135deg, hsl(210 40% 98%) 0%, hsl(220 14% 96%) 100%);
+    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(210 20% 98%) 100%);
     
     /* Shadows and effects */
     --shadow-glow: 0 0 20px hsl(var(--primary) / 0.15);
-    --shadow-card: 0 8px 32px hsl(0 0% 0% / 0.12);
+    --shadow-card: 0 8px 32px hsl(220 14% 85% / 0.25);
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
