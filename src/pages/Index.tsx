@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { DashboardFilters } from '@/components/dashboard/DashboardFilters';
 import { MetricsPanel } from '@/components/dashboard/MetricsPanel';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { SentimentLegend } from '@/components/dashboard/SentimentLegend';
@@ -18,6 +19,76 @@ const Index = () => {
   const { toast } = useToast();
   const [selectedInteraction, setSelectedInteraction] = useState<string | null>(null);
   const [showConfig, setShowConfig] = useState(!isConnected);
+  
+  // Estados para los filtros
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showHumanRequired, setShowHumanRequired] = useState(false);
+
+  // Función para filtrar interacciones
+  const getFilteredInteractions = (interactions: Interaction[]) => {
+    return interactions.filter(interaction => {
+      // Filtro por fecha (mismo día)
+      const interactionDate = new Date(interaction.timestamp);
+      const isSameDay = interactionDate.toDateString() === selectedDate.toDateString();
+      
+      // Filtro por requiere humano
+      const meetsHumanRequirement = !showHumanRequired || interaction.requiresHuman;
+      
+      return isSameDay && meetsHumanRequirement;
+    });
+  };
+
+  const filteredInteractions = getFilteredInteractions(interactions);
+
+  // Calcular métricas filtradas
+  const getFilteredMetrics = () => {
+    if (!metrics) return null;
+    
+    const totalInteractions = filteredInteractions.length;
+    const aiHandled = filteredInteractions.filter(i => i.aiHandled).length;
+    const humanRequired = filteredInteractions.filter(i => i.requiresHuman && !i.completed).length;
+    const completed = filteredInteractions.filter(i => i.completed).length;
+    
+    const sentimentBreakdown = filteredInteractions.reduce((acc, interaction) => {
+      acc[interaction.sentiment] = (acc[interaction.sentiment] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const priorityBreakdown = filteredInteractions.reduce((acc, interaction) => {
+      acc[interaction.priority] = (acc[interaction.priority] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const completedInteractions = filteredInteractions.filter(i => i.completed);
+    const averageResponseTime = completedInteractions.length > 0
+      ? Math.round(completedInteractions.reduce((sum, i) => sum + i.duration, 0) / completedInteractions.length)
+      : 0;
+
+    return {
+      ...metrics,
+      totalInteractions,
+      aiHandled,
+      humanRequired,
+      completed,
+      averageResponseTime,
+      sentimentBreakdown: {
+        positive: 0,
+        neutral: 0,
+        warning: 0,
+        negative: 0,
+        ...sentimentBreakdown
+      },
+      priorityBreakdown: {
+        low: 0,
+        medium: 0,
+        high: 0,
+        critical: 0,
+        ...priorityBreakdown
+      }
+    };
+  };
+
+  const filteredMetrics = getFilteredMetrics();
 
   const handleInteractionClick = (interaction: Interaction) => {
     setSelectedInteraction(interaction.id);
@@ -110,25 +181,33 @@ const Index = () => {
             <SupabaseConfig onConfigChange={updateConfig} />
           </div>
         )}
+
+        {/* Filtros */}
+        <DashboardFilters
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+          showHumanRequired={showHumanRequired}
+          onHumanRequiredChange={setShowHumanRequired}
+        />
         
-        <MetricsPanel metrics={metrics} />
+        <MetricsPanel metrics={filteredMetrics || metrics} />
         
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
           <div className="lg:col-span-3">
             <DashboardGrid 
-              interactions={interactions}
+              interactions={filteredInteractions}
               onInteractionClick={handleInteractionClick}
             />
           </div>
           
           <div className="lg:col-span-1">
-            <SentimentLegend metrics={metrics} />
+            <SentimentLegend metrics={filteredMetrics || metrics} />
           </div>
         </div>
 
         <div id="cases-table">
           <CasesTable 
-            interactions={interactions}
+            interactions={filteredInteractions}
             onCaseClick={handleCaseClick}
             selectedCase={selectedInteraction}
           />
