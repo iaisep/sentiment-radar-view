@@ -1,8 +1,10 @@
+
 import { useState } from 'react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { MetricsPanel } from '@/components/dashboard/MetricsPanel';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { SentimentLegend } from '@/components/dashboard/SentimentLegend';
+import { CasesTable } from '@/components/dashboard/CasesTable';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { Interaction } from '@/types/dashboard';
 import { useToast } from '@/hooks/use-toast';
@@ -10,14 +12,34 @@ import { useToast } from '@/hooks/use-toast';
 const Index = () => {
   const { interactions, metrics, isLoading, refreshData } = useDashboardData();
   const { toast } = useToast();
-  const [selectedInteraction, setSelectedInteraction] = useState<Interaction | null>(null);
+  const [selectedInteraction, setSelectedInteraction] = useState<string | null>(null);
 
   const handleInteractionClick = (interaction: Interaction) => {
-    setSelectedInteraction(interaction);
+    setSelectedInteraction(interaction.id);
     toast({
       title: `Ticket ${interaction.ticketId}`,
       description: `${interaction.sentiment.toUpperCase()} - Prioridad ${interaction.priority} - ${interaction.aiHandled ? 'IA' : 'Humano'}`,
     });
+    
+    // Scroll a la tabla de casos
+    setTimeout(() => {
+      const casesSection = document.getElementById('cases-table');
+      if (casesSection) {
+        casesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  };
+
+  const handleCaseClick = (interaction: Interaction) => {
+    setSelectedInteraction(interaction.id);
+    toast({
+      title: `Revisando caso ${interaction.ticketId}`,
+      description: `Abriendo detalles del caso para resolución...`,
+    });
+    
+    // Aquí se puede implementar la navegación a una página de detalles
+    // Por ahora solo mostramos un toast
+    console.log('Navegando a detalles del caso:', interaction);
   };
 
   const handleRefresh = () => {
@@ -50,7 +72,7 @@ const Index = () => {
         
         <MetricsPanel metrics={metrics} />
         
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
           <div className="lg:col-span-3">
             <DashboardGrid 
               interactions={interactions}
@@ -61,6 +83,15 @@ const Index = () => {
           <div className="lg:col-span-1">
             <SentimentLegend metrics={metrics} />
           </div>
+        </div>
+
+        {/* Tabla de casos */}
+        <div id="cases-table">
+          <CasesTable 
+            interactions={interactions}
+            onCaseClick={handleCaseClick}
+            selectedCase={selectedInteraction}
+          />
         </div>
       </div>
     </div>
