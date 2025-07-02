@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Interaction, DashboardMetrics, SentimentType, PriorityLevel, InteractionStatus } from '@/types/dashboard';
+import { SupabaseService } from '@/services/supabaseService';
+import { SupabaseConfig } from '@/components/dashboard/SupabaseConfig';
 
 // Simulated data generation (to be replaced with NocoDB integration)
 const generateMockInteraction = (id: string): Interaction => {
@@ -71,34 +73,71 @@ const calculateMetrics = (interactions: Interaction[]): DashboardMetrics => {
   };
 };
 
-export function useDashboardData() {
+export function useDashboardData(supabaseConfig?: SupabaseConfig | null) {
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [supabaseService, setSupabaseService] = useState<SupabaseService | null>(null);
 
+  // Inicializar servicio de Supabase cuando cambie la configuración
   useEffect(() => {
-    // Simulate initial data load
-    const loadInitialData = () => {
-      const mockInteractions = Array.from({ length: 250 }, (_, i) => 
-        generateMockInteraction(`interaction-${i}`)
-      );
+    if (supabaseConfig) {
+      setSupabaseService(new SupabaseService(supabaseConfig));
+    } else {
+      setSupabaseService(null);
+    }
+  }, [supabaseConfig]);
+
+  // Función para cargar datos
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      let loadedInteractions: Interaction[];
+
+      if (supabaseService) {
+        // Cargar datos reales de Supabase
+        console.log('Cargando datos desde Supabase...');
+        loadedInteractions = await supabaseService.getInteractions();
+        console.log('Datos cargados:', loadedInteractions.length, 'interacciones');
+      } else {
+        // Usar datos simulados si no hay configuración de Supabase
+        console.log('Usando datos simulados...');
+        loadedInteractions = Array.from({ length: 250 }, (_, i) => 
+          generateMockInteraction(`interaction-${i}`)
+        );
+      }
+
+      setInteractions(loadedInteractions);
       
-      setInteractions(mockInteractions);
-      setMetrics(calculateMetrics(mockInteractions));
+      if (supabaseService) {
+        setMetrics(supabaseService.calculateMetrics(loadedInteractions));
+      } else {
+        setMetrics(calculateMetrics(loadedInteractions));
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      // Fallback a datos simulados en caso de error
+      const fallbackInteractions = Array.from({ length: 250 }, (_, i) => 
+        generateMockInteraction(`fallback-${i}`)
+      );
+      setInteractions(fallbackInteractions);
+      setMetrics(calculateMetrics(fallbackInteractions));
+    } finally {
       setIsLoading(false);
-    };
+    }
+  };
 
-    // Simulate loading delay
-    const timer = setTimeout(loadInitialData, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
+  // Cargar datos iniciales
   useEffect(() => {
-    // Simulate real-time updates every 10 seconds
-    const interval = setInterval(() => {
-      if (interactions.length > 0) {
-        // Randomly update some interactions
+    loadData();
+  }, [supabaseService]);
+
+  // Configurar actualizaciones en tiempo real solo si no estamos usando Supabase
+  // (para Supabase, implementaremos subscripciones más adelante)
+  useEffect(() => {
+    if (!supabaseService && interactions.length > 0) {
+      const interval = setInterval(() => {
+        // Simulate real-time updates every 10 seconds
         const updatedInteractions = interactions.map(interaction => {
           if (Math.random() > 0.95) { // 5% chance of update
             return {
@@ -118,28 +157,18 @@ export function useDashboardData() {
 
         setInteractions(updatedInteractions);
         setMetrics(calculateMetrics(updatedInteractions));
-      }
-    }, 10000);
+      }, 10000);
 
-    return () => clearInterval(interval);
-  }, [interactions]);
+      return () => clearInterval(interval);
+    }
+  }, [interactions, supabaseService]);
 
   return {
     interactions,
     metrics,
     isLoading,
-    // Future: Methods to integrate with NocoDB
-    refreshData: () => {
-      setIsLoading(true);
-      // This will be replaced with actual NocoDB API calls
-      setTimeout(() => {
-        const newData = Array.from({ length: 250 }, (_, i) => 
-          generateMockInteraction(`refresh-${i}`)
-        );
-        setInteractions(newData);
-        setMetrics(calculateMetrics(newData));
-        setIsLoading(false);
-      }, 500);
-    }
+    refreshData: loadData,
+    // Exponer el servicio para operaciones adicionales
+    supabaseService
   };
 }
