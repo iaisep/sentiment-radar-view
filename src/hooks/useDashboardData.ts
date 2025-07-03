@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Interaction, DashboardMetrics, SentimentType, PriorityLevel, InteractionStatus } from '@/types/dashboard';
 import { SupabaseService } from '@/services/supabaseService';
 import { SupabaseConfig } from '@/components/dashboard/SupabaseConfig';
@@ -78,9 +79,20 @@ export function useDashboardData(supabaseConfig?: SupabaseConfig | null) {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [supabaseService, setSupabaseService] = useState<SupabaseService | null>(null);
+  
+  // Usar ref para evitar múltiples requests simultáneos
+  const loadingRef = useRef(false);
+  const configRef = useRef<SupabaseConfig | null>(null);
 
-  // Inicializar servicio de Supabase cuando cambie la configuración
+  // Inicializar servicio de Supabase solo cuando cambie la configuración
   useEffect(() => {
+    // Evitar recrear el servicio si la configuración es la misma
+    if (JSON.stringify(supabaseConfig) === JSON.stringify(configRef.current)) {
+      return;
+    }
+
+    configRef.current = supabaseConfig || null;
+    
     if (supabaseConfig) {
       setSupabaseService(new SupabaseService(supabaseConfig));
     } else {
@@ -88,9 +100,17 @@ export function useDashboardData(supabaseConfig?: SupabaseConfig | null) {
     }
   }, [supabaseConfig]);
 
-  // Función para cargar datos
-  const loadData = async () => {
+  // Función para cargar datos con control de concurrencia
+  const loadData = useCallback(async () => {
+    // Evitar múltiples requests simultáneos
+    if (loadingRef.current) {
+      console.log('Request ya en progreso, evitando duplicado');
+      return;
+    }
+
+    loadingRef.current = true;
     setIsLoading(true);
+    
     try {
       let loadedInteractions: Interaction[];
 
@@ -124,19 +144,24 @@ export function useDashboardData(supabaseConfig?: SupabaseConfig | null) {
       setMetrics(calculateMetrics(fallbackInteractions));
     } finally {
       setIsLoading(false);
+      loadingRef.current = false;
     }
-  };
-
-  // Cargar datos iniciales
-  useEffect(() => {
-    loadData();
   }, [supabaseService]);
 
+  // Cargar datos iniciales solo cuando cambie el servicio
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   // Configurar actualizaciones en tiempo real solo si no estamos usando Supabase
-  // (para Supabase, implementaremos subscripciones más adelante)
   useEffect(() => {
     if (!supabaseService && interactions.length > 0) {
       const interval = setInterval(() => {
+        // Evitar actualizaciones si hay un request en progreso
+        if (loadingRef.current) {
+          return;
+        }
+
         // Simulate real-time updates every 10 seconds
         const updatedInteractions = interactions.map(interaction => {
           if (Math.random() > 0.95) { // 5% chance of update

@@ -1,15 +1,25 @@
-
 import { SupabaseConfig } from '@/components/dashboard/SupabaseConfig';
 import { Interaction, DashboardMetrics, SentimentType, PriorityLevel } from '@/types/dashboard';
 
 export class SupabaseService {
   private config: SupabaseConfig;
+  private requestCache: Map<string, { data: any; timestamp: number }> = new Map();
+  private readonly CACHE_DURATION = 5000; // 5 segundos de cache
 
   constructor(config: SupabaseConfig) {
     this.config = config;
   }
 
   private async makeRequest(endpoint: string, options: RequestInit = {}) {
+    // Implementar cache simple para evitar requests duplicados
+    const cacheKey = `${endpoint}-${JSON.stringify(options)}`;
+    const cached = this.requestCache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+      console.log('Usando datos del cache para:', endpoint);
+      return cached.data;
+    }
+
     const response = await fetch(`${this.config.url}${endpoint}`, {
       ...options,
       headers: {
@@ -24,7 +34,14 @@ export class SupabaseService {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    
+    // Guardar en cache solo para requests GET
+    if (!options.method || options.method === 'GET') {
+      this.requestCache.set(cacheKey, { data, timestamp: Date.now() });
+    }
+
+    return data;
   }
 
   // Obtener todas las interacciones
